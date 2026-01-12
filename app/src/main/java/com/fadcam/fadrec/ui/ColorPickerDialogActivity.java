@@ -19,11 +19,16 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 public class ColorPickerDialogActivity extends Activity {
     
     public static final String EXTRA_SELECTED_COLOR = "selected_color";
+    public static final String EXTRA_TAG = "tag";
     public static final String ACTION_COLOR_SELECTED = "com.fadcam.fadrec.COLOR_SELECTED";
+    
+    private String tag;
     
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        tag = getIntent().getStringExtra(EXTRA_TAG);
         
         // Show color picker dialog immediately
         showColorPickerDialog();
@@ -108,9 +113,12 @@ public class ColorPickerDialogActivity extends Activity {
             View colorSwatch = colorGrid.getChildAt(i);
             int finalColor = colors[i];
             colorSwatch.setOnClickListener(v -> {
-                // Send result back to service
+                // Send result back to service or fragment
                 Intent resultIntent = new Intent(ACTION_COLOR_SELECTED);
                 resultIntent.putExtra(EXTRA_SELECTED_COLOR, finalColor);
+                if (tag != null) {
+                    resultIntent.putExtra(EXTRA_TAG, tag);
+                }
                 sendBroadcast(resultIntent);
                 
                 // Dismiss dialog and close activity

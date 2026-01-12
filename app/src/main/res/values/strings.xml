@@ -124,6 +124,9 @@
     <string name="fadrec_ready_to_record_subtitle">Tap to begin</string>
     <string name="fadrec_permission_denied">Screen recording permission denied</string>
     <string name="fadrec_mode_title">FadRec • Screen Recording</string>
+    <string name="gesture_trails_title">Show Gesture Trails</string>
+    <string name="gesture_dot_color">Tap Dot Color</string>
+    <string name="gesture_trail_color">Trail Color</string>
 
     <string name="video_recording_started">Recording started</string>
     <string name="video_recording_stopped">Recording stopped</string>

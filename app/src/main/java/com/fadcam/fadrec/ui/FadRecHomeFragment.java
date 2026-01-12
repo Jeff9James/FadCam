@@ -61,10 +61,12 @@ public class FadRecHomeFragment extends HomeFragment {
     // Broadcast receivers for screen recording state
     private BroadcastReceiver screenRecordingStateReceiver;
     private BroadcastReceiver annotationServiceReceiver;
+    private BroadcastReceiver colorSelectedReceiver;
     
     // Registration flags to prevent double-registration
     private boolean isScreenRecordingReceiverRegistered = false;
     private boolean isAnnotationServiceReceiverRegistered = false;
+    private boolean isColorSelectedReceiverRegistered = false;
     
     // Debouncing for button clicks to prevent rapid start/stop
     private long lastClickTime = 0;
@@ -102,6 +104,7 @@ public class FadRecHomeFragment extends HomeFragment {
         // and are ready to receive broadcasts when the app comes to foreground
         registerScreenRecordingReceivers();
         registerAnnotationServiceReceiver();
+        registerColorSelectedReceiver();
         
         // Register audio permission launcher
         audioPermissionLauncher = registerForActivityResult(
@@ -188,6 +191,24 @@ public class FadRecHomeFragment extends HomeFragment {
         
         // NOTE: Receiver registration moved to onStart() to avoid double-registration
         // on fragment recreation and to maintain proper lifecycle coordination
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        
+        // Unregister receivers
+        if (isScreenRecordingReceiverRegistered && screenRecordingStateReceiver != null) {
+            LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(screenRecordingStateReceiver);
+        }
+        
+        if (isAnnotationServiceReceiverRegistered && annotationServiceReceiver != null) {
+            requireContext().unregisterReceiver(annotationServiceReceiver);
+        }
+        
+        if (isColorSelectedReceiverRegistered && colorSelectedReceiver != null) {
+            requireContext().unregisterReceiver(colorSelectedReceiver);
+        }
     }
     
     @Override
@@ -489,6 +510,9 @@ public class FadRecHomeFragment extends HomeFragment {
         // Setup floating controls toggle card in the tiles area
         setupFloatingControlsCard(rootView);
         
+        // Setup gesture trails toggle card
+        setupGestureTrailsCard(rootView);
+        
         // Replace preview card content with custom FadRec screen icon
         replacePreviewWithScreenIcon(rootView);
         
@@ -556,6 +580,115 @@ public class FadRecHomeFragment extends HomeFragment {
             
             Log.d(TAG, "Floating controls card added");
         }
+    }
+    
+    /**
+     * Setup gesture trails toggle card.
+     */
+    private void setupGestureTrailsCard(View rootView) {
+        View cardGestureTrails = getLayoutInflater().inflate(
+            com.fadcam.R.layout.card_gesture_trails,
+            null
+        );
+        
+        // Find the parent layout (same as floating controls)
+        View tileAfToggle = rootView.findViewById(com.fadcam.R.id.tile_af_toggle);
+        android.view.ViewGroup tilesParent = null;
+        if (tileAfToggle != null && tileAfToggle.getParent() instanceof android.view.ViewGroup) {
+            tilesParent = (android.view.ViewGroup) tileAfToggle.getParent();
+        }
+        
+        if (tilesParent != null) {
+            // Add after floating controls card (which was added at index 0)
+            tilesParent.addView(cardGestureTrails, 1);
+            
+            androidx.appcompat.widget.SwitchCompat switchGestureTrails = 
+                cardGestureTrails.findViewById(com.fadcam.R.id.switchGestureTrails);
+            View layoutGestureColors = cardGestureTrails.findViewById(com.fadcam.R.id.layoutGestureColors);
+            View btnPickDotColor = cardGestureTrails.findViewById(com.fadcam.R.id.btnPickDotColor);
+            View btnPickTrailColor = cardGestureTrails.findViewById(com.fadcam.R.id.btnPickTrailColor);
+            View viewDotColorPreview = cardGestureTrails.findViewById(com.fadcam.R.id.viewDotColorPreview);
+            View viewTrailColorPreview = cardGestureTrails.findViewById(com.fadcam.R.id.viewTrailColorPreview);
+            
+            // Set initial state
+            boolean isEnabled = sharedPreferencesManager.isGestureTrailsEnabled();
+            switchGestureTrails.setChecked(isEnabled);
+            layoutGestureColors.setVisibility(isEnabled ? View.VISIBLE : View.GONE);
+            
+            // Update previews
+            updateGestureColorPreviews(viewDotColorPreview, viewTrailColorPreview);
+            
+            // Handle switch toggle
+            switchGestureTrails.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                sharedPreferencesManager.setGestureTrailsEnabled(isChecked);
+                layoutGestureColors.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+                notifyGestureSettingsChanged();
+            });
+            
+            // Handle color picking
+            btnPickDotColor.setOnClickListener(v -> {
+                Intent intent = new Intent(requireContext(), ColorPickerDialogActivity.class);
+                intent.putExtra(ColorPickerDialogActivity.EXTRA_TAG, "dot_color");
+                startActivity(intent);
+            });
+            
+            btnPickTrailColor.setOnClickListener(v -> {
+                Intent intent = new Intent(requireContext(), ColorPickerDialogActivity.class);
+                intent.putExtra(ColorPickerDialogActivity.EXTRA_TAG, "trail_color");
+                startActivity(intent);
+            });
+            
+            Log.d(TAG, "Gesture trails card added");
+        }
+    }
+    
+    private void updateGestureColorPreviews(View dotPreview, View trailPreview) {
+        if (dotPreview != null) {
+            int color = sharedPreferencesManager.getGestureDotColor();
+            dotPreview.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
+        }
+        if (trailPreview != null) {
+            int color = sharedPreferencesManager.getGestureTrailColor();
+            trailPreview.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
+        }
+    }
+    
+    private void notifyGestureSettingsChanged() {
+        Intent intent = new Intent("com.fadcam.fadrec.ACTION_GESTURE_SETTINGS_CHANGED");
+        requireContext().sendBroadcast(intent);
+    }
+    
+    private void registerColorSelectedReceiver() {
+        if (isColorSelectedReceiverRegistered) return;
+        
+        colorSelectedReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (ColorPickerDialogActivity.ACTION_COLOR_SELECTED.equals(intent.getAction())) {
+                    int color = intent.getIntExtra(ColorPickerDialogActivity.EXTRA_SELECTED_COLOR, 0);
+                    String tag = intent.getStringExtra(ColorPickerDialogActivity.EXTRA_TAG);
+                    
+                    if ("dot_color".equals(tag)) {
+                        sharedPreferencesManager.setGestureDotColor(color);
+                    } else if ("trail_color".equals(tag)) {
+                        sharedPreferencesManager.setGestureTrailColor(color);
+                    }
+                    
+                    // Refresh previews
+                    if (getView() != null) {
+                        View dotPreview = getView().findViewById(com.fadcam.R.id.viewDotColorPreview);
+                        View trailPreview = getView().findViewById(com.fadcam.R.id.viewTrailColorPreview);
+                        updateGestureColorPreviews(dotPreview, trailPreview);
+                    }
+                    
+                    notifyGestureSettingsChanged();
+                }
+            }
+        };
+        
+        IntentFilter filter = new IntentFilter(ColorPickerDialogActivity.ACTION_COLOR_SELECTED);
+        requireContext().registerReceiver(colorSelectedReceiver, filter);
+        isColorSelectedReceiverRegistered = true;
     }
     
     /**

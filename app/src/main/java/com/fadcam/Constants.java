@@ -186,6 +186,10 @@ public abstract class Constants {
         "pref_is_screen_recording_in_progress"; // boolean
     public static final String PREF_SCREEN_RECORDING_STATE =
         "pref_screen_recording_state"; // NONE/IN_PROGRESS/PAUSED
+    
+    public static final String PREF_GESTURE_TRAILS_ENABLED = "pref_gesture_trails_enabled";
+    public static final String PREF_GESTURE_DOT_COLOR = "pref_gesture_dot_color";
+    public static final String PREF_GESTURE_TRAIL_COLOR = "pref_gesture_trail_color";
 
     // Default screen recording quality settings
     public static final int DEFAULT_SCREEN_RECORDING_WIDTH = 1920; // FHD

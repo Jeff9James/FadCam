@@ -66,6 +66,7 @@ import com.fadcam.fadrec.ui.annotation.TextEditorDialog;
 import com.fadcam.fadrec.ui.annotation.ShapePickerDialog;
 import com.fadcam.fadrec.ui.annotation.objects.TextObject;
 import com.fadcam.fadrec.ui.annotation.objects.ShapeObject;
+import com.fadcam.fadrec.gesture.GestureTrailDetector;
 import com.fadcam.fadrec.ui.overlay.BaseEditorOverlay;
 import com.fadcam.fadrec.ui.overlay.InlineTextEditor;
 import com.fadcam.fadrec.ui.overlay.TextEditorActivity;
@@ -183,6 +184,10 @@ public class AnnotationService extends Service {
     private View btnToggleAnnotation;
     private View btnToggleCanvasVisibility;
 
+    // Gesture detection
+    private GestureTrailDetector gestureTrailDetector;
+    private boolean gestureTrailsEnabled = false;
+
     // Window params for annotation canvas (need to update flags dynamically)
     private WindowManager.LayoutParams annotationCanvasParams;
 
@@ -197,6 +202,7 @@ public class AnnotationService extends Service {
     private BroadcastReceiver pageRenameReceiver;
     private BroadcastReceiver textEditorResultReceiver; // Handle TextEditorActivity results
     private BroadcastReceiver editorLifecycleReceiver; // Handle editor start/finish to disable/enable canvas
+    private BroadcastReceiver gestureSettingsReceiver; // Handle gesture settings changes
 
     // Toolbar dragging
     private int toolbarInitialX, toolbarInitialY;
@@ -740,6 +746,7 @@ public class AnnotationService extends Service {
                 registerProjectNamingReceiver();
                 registerProjectSelectionReceiver();
                 registerTextEditorResultReceiver(); // Handle results from TextEditorActivity
+                registerGestureSettingsReceiver(); // Handle gesture settings changes
 
                 // Broadcast that service is ready (dismiss loading dialog)
                 Intent readyIntent = new Intent("com.fadcam.fadrec.ANNOTATION_SERVICE_READY");
@@ -893,6 +900,93 @@ public class AnnotationService extends Service {
         updateProjectNameDisplay();
     }
 
+    /**
+     * Initialize gesture detection for trails
+     */
+    private void initGestureDetection() {
+        updateGestureSettings();
+        
+        float density = getResources().getDisplayMetrics().density;
+        gestureTrailDetector = new GestureTrailDetector(density, new GestureTrailDetector.OnGestureListener() {
+            private float lastSwipeX, lastSwipeY;
+            private float lastMultiX1, lastMultiY1, lastMultiX2, lastMultiY2;
+            
+            @Override
+            public void onTap(float x, float y) {
+                if (annotationView != null) {
+                    annotationView.addTapGesture(x, y);
+                }
+            }
+
+            @Override
+            public void onSwipeStarted(float x, float y) {
+                lastSwipeX = x;
+                lastSwipeY = y;
+            }
+
+            @Override
+            public void onSwipeMoved(float x, float y) {
+                if (annotationView != null) {
+                    android.graphics.Path segment = new android.graphics.Path();
+                    segment.moveTo(lastSwipeX, lastSwipeY);
+                    segment.lineTo(x, y);
+                    annotationView.addSwipeSegment(segment);
+                    lastSwipeX = x;
+                    lastSwipeY = y;
+                }
+            }
+
+            @Override
+            public void onSwipeEnded(float x, float y) {
+            }
+
+            @Override
+            public void onMultiTouchStarted(float x1, float y1, float x2, float y2) {
+                lastMultiX1 = x1;
+                lastMultiY1 = y1;
+                lastMultiX2 = x2;
+                lastMultiY2 = y2;
+            }
+
+            @Override
+            public void onMultiTouchMoved(float x1, float y1, float x2, float y2) {
+                if (annotationView != null) {
+                    android.graphics.Path segment = new android.graphics.Path();
+                    segment.moveTo(lastMultiX1, lastMultiY1);
+                    segment.lineTo(x1, y1);
+                    segment.moveTo(lastMultiX2, lastMultiY2);
+                    segment.lineTo(x2, y2);
+                    annotationView.addSwipeSegment(segment);
+                    lastMultiX1 = x1;
+                    lastMultiY1 = y1;
+                    lastMultiX2 = x2;
+                    lastMultiY2 = y2;
+                }
+            }
+
+            @Override
+            public void onMultiTouchEnded() {
+            }
+        });
+
+        if (annotationView != null) {
+            annotationView.setGestureTrailDetector(gestureTrailDetector);
+        }
+    }
+
+    private void updateGestureSettings() {
+        if (sharedPreferencesManager != null) {
+            gestureTrailsEnabled = sharedPreferencesManager.isGestureTrailsEnabled();
+            if (annotationView != null) {
+                annotationView.setGestureVisualizationEnabled(gestureTrailsEnabled);
+                annotationView.setGestureColors(
+                    sharedPreferencesManager.getGestureDotColor(),
+                    sharedPreferencesManager.getGestureTrailColor()
+                );
+            }
+        }
+    }
+
     private void setupAnnotationCanvas() {
         Log.d(TAG, "Setting up annotation canvas...");
         annotationView = new AnnotationView(this);
@@ -927,6 +1021,9 @@ public class AnnotationService extends Service {
             showTextEditorDialog(textObject);
         });
 
+        // Initialize gesture detection
+        initGestureDetection();
+
         int layoutType = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 : WindowManager.LayoutParams.TYPE_PHONE;
@@ -938,8 +1035,7 @@ public class AnnotationService extends Service {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN |
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, // Start with NOT_TOUCHABLE since annotation
-                                                                       // starts disabled
+                        ((annotationEnabled || gestureTrailsEnabled) ? 0 : WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE),
                 PixelFormat.TRANSLUCENT);
 
         annotationCanvasParams.gravity = Gravity.TOP | Gravity.START;
@@ -3444,6 +3540,34 @@ public class AnnotationService extends Service {
     /**
      * Register broadcast receiver for TextEditorActivity results
      */
+    private void registerGestureSettingsReceiver() {
+        gestureSettingsReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Log.d(TAG, "Gesture settings changed, updating...");
+                updateGestureSettings();
+                
+                // CRITICAL: Update window flags if touchable state changed
+                if (annotationCanvasParams != null && annotationView != null) {
+                    boolean touchable = annotationEnabled || gestureTrailsEnabled;
+                    boolean hasFlag = (annotationCanvasParams.flags & WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE) == 0;
+                    
+                    if (touchable != hasFlag) {
+                        if (touchable) {
+                            annotationCanvasParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+                        } else {
+                            annotationCanvasParams.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+                        }
+                        windowManager.updateViewLayout(annotationView, annotationCanvasParams);
+                        Log.d(TAG, "Gesture settings update: touchable window=" + touchable);
+                    }
+                }
+            }
+        };
+        IntentFilter filter = new IntentFilter("com.fadcam.fadrec.ACTION_GESTURE_SETTINGS_CHANGED");
+        registerReceiver(gestureSettingsReceiver, filter);
+    }
+
     private void registerTextEditorResultReceiver() {
         textEditorResultReceiver = new BroadcastReceiver() {
             @Override
@@ -4037,8 +4161,9 @@ public class AnnotationService extends Service {
             annotationView.setEnabled(enabled);
 
             // CRITICAL: Update window flags so touches pass through when disabled
+            // If gesture trails are enabled, we need to keep it touchable but return false from onTouchEvent
             if (annotationCanvasParams != null) {
-                if (enabled) {
+                if (enabled || gestureTrailsEnabled) {
                     // Remove FLAG_NOT_TOUCHABLE so annotation receives touches
                     annotationCanvasParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
                 } else {
@@ -4046,7 +4171,7 @@ public class AnnotationService extends Service {
                     annotationCanvasParams.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
                 }
                 windowManager.updateViewLayout(annotationView, annotationCanvasParams);
-                Log.d(TAG, "Canvas window flags updated: touchable=" + enabled);
+                Log.d(TAG, "Canvas window flags updated: touchable=" + (enabled || gestureTrailsEnabled));
             }
         }
 
@@ -4435,6 +4560,9 @@ public class AnnotationService extends Service {
         }
         if (editorLifecycleReceiver != null) {
             androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(this).unregisterReceiver(editorLifecycleReceiver);
+        }
+        if (gestureSettingsReceiver != null) {
+            unregisterReceiver(gestureSettingsReceiver);
         }
 
         // Stop auto-save timer
