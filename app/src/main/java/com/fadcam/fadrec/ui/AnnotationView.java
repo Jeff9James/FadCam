@@ -103,6 +103,23 @@ public class AnnotationView extends View {
     private OnSelectionModeChangeListener selectionModeChangeListener;
     private OnTextEditRequestListener textEditRequestListener;
     
+    // Gesture trail state
+    private java.util.List<TemporaryGesture> activeGestures = new java.util.ArrayList<>();
+    private int gestureDotColor = 0xFFFF4081;
+    private int gestureTrailColor = 0xAA00BCD4;
+    private boolean gestureVisualizationEnabled = false;
+    private Handler gestureFadeHandler = new Handler(Looper.getMainLooper());
+    private com.fadcam.fadrec.gesture.GestureTrailDetector gestureTrailDetector;
+
+    private static class TemporaryGesture {
+        android.graphics.Path path;
+        float x, y; // For taps
+        boolean isTap;
+        long startTime;
+        float opacity = 1.0f;
+        int color;
+    }
+
     public interface OnStateChangeListener {
         void onStateChanged();
     }
@@ -238,6 +255,84 @@ public class AnnotationView extends View {
     
     public boolean isCanvasHidden() {
         return canvasHidden;
+    }
+    
+    /**
+     * Configure gesture visualization
+     */
+    public void setGestureVisualizationEnabled(boolean enabled) {
+        this.gestureVisualizationEnabled = enabled;
+    }
+    
+    public void setGestureColors(int dotColor, int trailColor) {
+        this.gestureDotColor = dotColor;
+        this.gestureTrailColor = trailColor;
+    }
+
+    public void setGestureTrailDetector(com.fadcam.fadrec.gesture.GestureTrailDetector detector) {
+        this.gestureTrailDetector = detector;
+    }
+    
+    /**
+     * Add a tap gesture to be rendered
+     */
+    public void addTapGesture(float x, float y) {
+        if (!gestureVisualizationEnabled) return;
+        
+        TemporaryGesture gesture = new TemporaryGesture();
+        gesture.isTap = true;
+        gesture.x = x;
+        gesture.y = y;
+        gesture.startTime = System.currentTimeMillis();
+        gesture.color = gestureDotColor;
+        
+        synchronized (activeGestures) {
+            activeGestures.add(gesture);
+        }
+        
+        startGestureFadeTimer(gesture);
+        invalidate();
+    }
+    
+    /**
+     * Start/Update a swipe gesture path
+     */
+    public void addSwipeSegment(android.graphics.Path path) {
+        if (!gestureVisualizationEnabled) return;
+        
+        TemporaryGesture gesture = new TemporaryGesture();
+        gesture.isTap = false;
+        gesture.path = new android.graphics.Path(path);
+        gesture.startTime = System.currentTimeMillis();
+        gesture.color = gestureTrailColor;
+        
+        synchronized (activeGestures) {
+            // Check if we're updating an existing path or starting new
+            // For simplicity, we just add it. The caller should manage path lifecycle.
+            activeGestures.add(gesture);
+        }
+        
+        startGestureFadeTimer(gesture);
+        invalidate();
+    }
+    
+    private void startGestureFadeTimer(final TemporaryGesture gesture) {
+        gestureFadeHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                long elapsed = System.currentTimeMillis() - gesture.startTime;
+                if (elapsed < 600) {
+                    gesture.opacity = 1.0f - (elapsed / 600f);
+                    invalidate();
+                    gestureFadeHandler.postDelayed(this, 50);
+                } else {
+                    synchronized (activeGestures) {
+                        activeGestures.remove(gesture);
+                    }
+                    invalidate();
+                }
+            }
+        }, 50);
     }
     
     /**
@@ -603,6 +698,36 @@ public class AnnotationView extends View {
         if ((selectionMode || isLongPressing) && snapGuidesEnabled) {
             drawSafeAreaGuides(canvas);
         }
+        
+        // LAYER 5: Draw active gesture trails and dots
+        if (gestureVisualizationEnabled) {
+            drawActiveGestures(canvas);
+        }
+    }
+    
+    private void drawActiveGestures(Canvas canvas) {
+        synchronized (activeGestures) {
+            Paint gesturePaint = new Paint();
+            gesturePaint.setAntiAlias(true);
+            gesturePaint.setStrokeJoin(Paint.Join.ROUND);
+            gesturePaint.setStrokeCap(Paint.Cap.ROUND);
+            
+            for (TemporaryGesture gesture : activeGestures) {
+                gesturePaint.setColor(gesture.color);
+                gesturePaint.setAlpha((int) (gesture.opacity * 255));
+                
+                if (gesture.isTap) {
+                    gesturePaint.setStyle(Paint.Style.FILL);
+                    // Radius ~15-20dp
+                    float radius = 18 * getResources().getDisplayMetrics().density;
+                    canvas.drawCircle(gesture.x, gesture.y, radius, gesturePaint);
+                } else if (gesture.path != null) {
+                    gesturePaint.setStyle(Paint.Style.STROKE);
+                    gesturePaint.setStrokeWidth(12 * getResources().getDisplayMetrics().density);
+                    canvas.drawPath(gesture.path, gesturePaint);
+                }
+            }
+        }
     }
     
     /**
@@ -860,6 +985,11 @@ public class AnnotationView extends View {
     
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        // Handle gesture trails if enabled, even if annotation is disabled
+        if (gestureVisualizationEnabled && gestureTrailDetector != null) {
+            gestureTrailDetector.onTouchEvent(event);
+        }
+
         // CRITICAL: Respect enabled state - if disabled, don't process any touches
         if (!isEnabled()) {
             return false;

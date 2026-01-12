@@ -1775,6 +1775,54 @@ public class SharedPreferencesManager {
         Log.d("SharedPrefs", "Floating controls enabled: " + enabled);
     }
 
+    /**
+     * Gets whether gesture trails are enabled for screen recording.
+     * @return true if enabled, false otherwise
+     */
+    public boolean isGestureTrailsEnabled() {
+        return sharedPreferences.getBoolean(Constants.PREF_GESTURE_TRAILS_ENABLED, false);
+    }
+
+    /**
+     * Sets whether gesture trails are enabled for screen recording.
+     * @param enabled true to enable, false to disable
+     */
+    public void setGestureTrailsEnabled(boolean enabled) {
+        sharedPreferences.edit().putBoolean(Constants.PREF_GESTURE_TRAILS_ENABLED, enabled).apply();
+    }
+
+    /**
+     * Gets the dot color for taps.
+     * @return Color integer
+     */
+    public int getGestureDotColor() {
+        return sharedPreferences.getInt(Constants.PREF_GESTURE_DOT_COLOR, 0xFFFF4081); // Default: Pinkish
+    }
+
+    /**
+     * Sets the dot color for taps.
+     * @param color Color integer
+     */
+    public void setGestureDotColor(int color) {
+        sharedPreferences.edit().putInt(Constants.PREF_GESTURE_DOT_COLOR, color).apply();
+    }
+
+    /**
+     * Gets the trail color for swipes/scrolls.
+     * @return Color integer
+     */
+    public int getGestureTrailColor() {
+        return sharedPreferences.getInt(Constants.PREF_GESTURE_TRAIL_COLOR, 0xAA00BCD4); // Default: Semi-transparent Cyan
+    }
+
+    /**
+     * Sets the trail color for swipes/scrolls.
+     * @param color Color integer
+     */
+    public void setGestureTrailColor(int color) {
+        sharedPreferences.edit().putInt(Constants.PREF_GESTURE_TRAIL_COLOR, color).apply();
+    }
+
     // -------------- FadRec (Screen Recording) Preferences End --------------
 
     // -------------- Fadex Notification Preferences Start --------------
