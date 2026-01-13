@@ -139,9 +139,12 @@ android {
         }
     }
 
-// ./gradlew assembleNotesProRelease - Notes Pro variant
-// ./gradlew assembleCalcProRelease - Calculator Pro variant
-// ./gradlew assembleWeatherProRelease - Weather Pro variant
+// ./gradlew assembleNotesProDebug - Notes Pro variant (debug)
+// ./gradlew assembleNotesProRelease - Notes Pro variant (release)
+// ./gradlew assembleCalcProDebug - Calculator Pro variant (debug)
+// ./gradlew assembleCalcProRelease - Calculator Pro variant (release)
+// ./gradlew assembleWeatherProDebug - Weather Pro variant (debug)
+// ./gradlew assembleWeatherProRelease - Weather Pro variant (release)
 // ./gradlew assembleDefaultProPlusRelease -PcustomAppName="Custom Name" - Pro+ custom build (standalone)
 
     // Variant filter: only build specific variants
@@ -150,8 +153,8 @@ android {
         val isDefaultFlavor = name.contains("default")
         
         if (isPreBuiltFlavor) {
-            // Pre-built flavors: only 'release' build type
-            if (!name.endsWith("Release")) {
+            // Pre-built flavors: allow 'debug' and 'release' build types, ignore 'pro' and 'proPlus'
+            if (name.endsWith("Pro") || name.endsWith("ProPlus")) {
                 ignore = true
             }
         } else if (isDefaultFlavor) {

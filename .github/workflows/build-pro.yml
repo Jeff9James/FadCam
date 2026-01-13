@@ -1,4 +1,4 @@
-name: Build FadCam Pro Variants Release (Pre-built)
+name: Build FadCam Pro Variants Debug (Pre-built)
 
 on:
   push:
@@ -27,36 +27,36 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
           
-      - name: Setup local.properties for release build
+      - name: Setup local.properties for debug build
         run: |
-          echo "Building release APKs - no keystore required (unsigned)"
+          echo "Building debug APKs - no keystore required"
           
       - name: Build Notes Pro variant
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleNotesProRelease
+          ./gradlew assembleNotesProDebug
 
       - name: Build Calculator Pro variant
-        run: ./gradlew assembleCalcProRelease
+        run: ./gradlew assembleCalcProDebug
 
       - name: Build Weather Pro variant
-        run: ./gradlew assembleWeatherProRelease
+        run: ./gradlew assembleWeatherProDebug
           
       - name: Verify APKs were built
         run: |
           echo "✓ Checking built APKs..."
-          ls -lh app/build/outputs/apk/notesPro/release/app-notesPro-release-unsigned.apk || ls -lh app/build/outputs/apk/notesPro/release/
-          ls -lh app/build/outputs/apk/calcPro/release/app-calcPro-release-unsigned.apk || ls -lh app/build/outputs/apk/calcPro/release/
-          ls -lh app/build/outputs/apk/weatherPro/release/app-weatherPro-release-unsigned.apk || ls -lh app/build/outputs/apk/weatherPro/release/
+          ls -lh app/build/outputs/apk/notesPro/debug/app-notesPro-debug.apk
+          ls -lh app/build/outputs/apk/calcPro/debug/app-calcPro-debug.apk
+          ls -lh app/build/outputs/apk/weatherPro/debug/app-weatherPro-debug.apk
           
       - name: Upload Pro variant artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: fadcam-pro-variants-release-unsigned
+          name: fadcam-pro-variants-debug
           path: |
-            app/build/outputs/apk/notesPro/release/*.apk
-            app/build/outputs/apk/calcPro/release/*.apk
-            app/build/outputs/apk/weatherPro/release/*.apk
+            app/build/outputs/apk/notesPro/debug/app-notesPro-debug.apk
+            app/build/outputs/apk/calcPro/debug/app-calcPro-debug.apk
+            app/build/outputs/apk/weatherPro/debug/app-weatherPro-debug.apk
           retention-days: 1
           
       - name: Build summary
@@ -66,22 +66,23 @@ jobs:
           echo "**Built Variants:**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 1. Notes Pro" >> $GITHUB_STEP_SUMMARY
-          echo "- Package ID: com.fadcam.notes" >> $GITHUB_STEP_SUMMARY
+          echo "- Package ID: com.fadcam.beta.notes" >> $GITHUB_STEP_SUMMARY
           echo "- App Name: Notes" >> $GITHUB_STEP_SUMMARY
-          echo "- File: app-notesPro-release-unsigned.apk" >> $GITHUB_STEP_SUMMARY
+          echo "- File: app-notesPro-debug.apk" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 2. Calculator Pro" >> $GITHUB_STEP_SUMMARY
-          echo "- Package ID: com.fadcam.calc" >> $GITHUB_STEP_SUMMARY
+          echo "- Package ID: com.fadcam.beta.calc" >> $GITHUB_STEP_SUMMARY
           echo "- App Name: Calculator" >> $GITHUB_STEP_SUMMARY
-          echo "- File: app-calcPro-release-unsigned.apk" >> $GITHUB_STEP_SUMMARY
+          echo "- File: app-calcPro-debug.apk" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 3. Weather Pro" >> $GITHUB_STEP_SUMMARY
-          echo "- Package ID: com.fadcam.weather" >> $GITHUB_STEP_SUMMARY
+          echo "- Package ID: com.fadcam.beta.weather" >> $GITHUB_STEP_SUMMARY
           echo "- App Name: Weather" >> $GITHUB_STEP_SUMMARY
-          echo "- File: app-weatherPro-release-unsigned.apk" >> $GITHUB_STEP_SUMMARY
+          echo "- File: app-weatherPro-debug.apk" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Build Details:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Build Type: Release (Unsigned)" >> $GITHUB_STEP_SUMMARY
+          echo "- Build Type: Debug" >> $GITHUB_STEP_SUMMARY
+          echo "- Version Suffix: -beta" >> $GITHUB_STEP_SUMMARY
           echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
