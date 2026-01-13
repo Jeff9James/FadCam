@@ -66,25 +66,25 @@ jobs:
           echo "**Built Variants:**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 1. Notes Pro" >> $GITHUB_STEP_SUMMARY
-          echo "- Package ID: com.fadcam.pro.notes" >> $GITHUB_STEP_SUMMARY
+          echo "- Package ID: com.fadcam.beta.notes" >> $GITHUB_STEP_SUMMARY
           echo "- App Name: Notes" >> $GITHUB_STEP_SUMMARY
           echo "- File: app-notesPro-debug.apk" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 2. Calculator Pro" >> $GITHUB_STEP_SUMMARY
-          echo "- Package ID: com.fadcam.pro.calc" >> $GITHUB_STEP_SUMMARY
+          echo "- Package ID: com.fadcam.beta.calc" >> $GITHUB_STEP_SUMMARY
           echo "- App Name: Calculator" >> $GITHUB_STEP_SUMMARY
           echo "- File: app-calcPro-debug.apk" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 3. Weather Pro" >> $GITHUB_STEP_SUMMARY
-          echo "- Package ID: com.fadcam.pro.weather" >> $GITHUB_STEP_SUMMARY
+          echo "- Package ID: com.fadcam.beta.weather" >> $GITHUB_STEP_SUMMARY
           echo "- App Name: Weather" >> $GITHUB_STEP_SUMMARY
           echo "- File: app-weatherPro-debug.apk" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Build Details:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Build Type: Pro (Debug, Unsigned)" >> $GITHUB_STEP_SUMMARY
-          echo "- Version Suffix: -Pro" >> $GITHUB_STEP_SUMMARY
+          echo "- Build Type: Debug" >> $GITHUB_STEP_SUMMARY
+          echo "- Version Suffix: -beta" >> $GITHUB_STEP_SUMMARY
           echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Download:**" >> $GITHUB_STEP_SUMMARY
-          echo "All APKs are available in the workflow artifacts (7-day retention)" >> $GITHUB_STEP_SUMMARY
+          echo "All APKs are available in the workflow artifacts (1-day retention)" >> $GITHUB_STEP_SUMMARY
