@@ -266,7 +266,7 @@ public class HomeFragment extends BaseFragment {
     private Surface textureViewSurface; // To hold the Surface from TextureView
 
     // --- Fields Needed for Stats Update ---
-    private SharedPreferencesManager sharedPreferencesManager;
+    protected SharedPreferencesManager sharedPreferencesManager;
     // Listener for realtime preference updates (camera/resolution/fps)
     private SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private BroadcastReceiver recordingCompleteReceiver;
