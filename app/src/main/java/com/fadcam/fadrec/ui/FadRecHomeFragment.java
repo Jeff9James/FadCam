@@ -175,20 +175,25 @@ public class FadRecHomeFragment extends HomeFragment {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        // Log.d(TAG, "========== onViewCreated START ==========");
-        // Log.d(TAG, "Calling super.onViewCreated...");
+        // -------------- Fix Start (onViewCreated)-----------
+        Log.d(TAG, "========== onViewCreated START ==========");
+        Log.d(TAG, "Calling super.onViewCreated...");
+
+        // Parent's onViewCreated will respect shouldInitializeCameraFeatures() override
+        // and skip camera initialization for FadRec mode.
         super.onViewCreated(view, savedInstanceState);
-        // Log.d(TAG, "super.onViewCreated completed");
-        
+        Log.d(TAG, "super.onViewCreated completed successfully");
+
         // Apply FadRec-specific UI customizations
-        // Log.d(TAG, "Customizing UI for screen recording...");
+        Log.d(TAG, "Customizing UI for screen recording...");
         customizeUIForScreenRecording(view);
-        
+
         // Setup button click handlers
-        // Log.d(TAG, "Setting up button handlers...");
+        Log.d(TAG, "Setting up button handlers...");
         setupButtonHandlers(view);
-        // Log.d(TAG, "========== onViewCreated COMPLETE ==========");
-        
+        Log.d(TAG, "========== onViewCreated COMPLETE ==========");
+        // -------------- Fix Ended (onViewCreated)-----------
+
         // NOTE: Receiver registration moved to onStart() to avoid double-registration
         // on fragment recreation and to maintain proper lifecycle coordination
     }
@@ -311,6 +316,18 @@ public class FadRecHomeFragment extends HomeFragment {
         }
     }
         /**
+     * Override to prevent camera initialization in screen recording mode.
+     * FadRec does not use camera hardware, so we skip camera initialization
+     * to avoid permission errors and crashes.
+     */
+    @Override
+    protected boolean shouldInitializeCameraFeatures() {
+        // -------------- Fix Start (shouldInitializeCameraFeatures)-----------
+        return false; // FadRec uses MediaProjection for screen recording, not camera
+        // -------------- Fix Ended (shouldInitializeCameraFeatures)-----------
+    }
+
+    /**
      * Override parent's method to handle button reset for screen recording mode.
      * In FadRec mode, we don't have camera switch or torch, and pause is always enabled.
      * IMPORTANT: Only reset to idle if truly idle - preserve recording state.

@@ -3694,41 +3694,95 @@ public class HomeFragment extends BaseFragment {
         updatePreviewVisibility(); // CRUCIAL: Update visibility based on the loaded state
 
         buttonTorchSwitch = view.findViewById(R.id.buttonTorchSwitch);
-        initializeTorch();
-        setupTorchButton();
 
-        // Setup the small recording tiles row and listeners
-        setupRecordingTiles(view);
+        // -------------- Fix Start (onViewCreated_cameraInit)-----------
+        // In screen-recording (FadRec) mode we must not touch camera APIs.
+        // Also, when CAMERA permission is not granted yet, avoid crashing during init.
+        boolean canInitCameraFeatures = shouldInitializeCameraFeatures() &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
 
-        // Apply tile theming after tiles are initialized
-        String tileTheme = sharedPreferencesManager.sharedPreferences.getString(
-            Constants.PREF_APP_THEME,
-            Constants.DEFAULT_APP_THEME
-        );
-        if ("Faded Night".equals(tileTheme)) {
-            applyFadedNightThemeToTiles();
-        } else if ("Midnight Dusk".equals(tileTheme)) {
-            applyMidnightDuskThemeToTiles();
-        }
-
-        // Attempt to find camera with flash
-        try {
-            cameraId = getCameraWithFlash();
-            if (cameraId == null) {
-                Log.d(TAG, "No camera with flash found");
-                buttonTorchSwitch.setEnabled(false);
-                buttonTorchSwitch.setVisibility(View.GONE);
-            } else {
-                Log.d(TAG, "Flash available on camera: " + cameraId);
-                buttonTorchSwitch.setEnabled(true);
-                buttonTorchSwitch.setVisibility(View.VISIBLE);
+        if (canInitCameraFeatures) {
+            try {
+                initializeTorch();
+                setupTorchButton();
+            } catch (SecurityException e) {
+                Log.e(TAG, "Camera permission missing while initializing torch", e);
+                if (buttonTorchSwitch != null) {
+                    buttonTorchSwitch.setVisibility(View.GONE);
+                }
+            } catch (RuntimeException e) {
+                Log.e(TAG, "Unexpected error initializing torch", e);
+                if (buttonTorchSwitch != null) {
+                    buttonTorchSwitch.setVisibility(View.GONE);
+                }
             }
-        } catch (CameraAccessException e) {
-            Log.e(TAG, "Camera access error: " + e.getMessage());
-            e.printStackTrace();
-            buttonTorchSwitch.setEnabled(false);
-            buttonTorchSwitch.setVisibility(View.GONE);
+
+            try {
+                // Setup the small recording tiles row and listeners
+                setupRecordingTiles(view);
+
+                // Apply tile theming after tiles are initialized
+                String tileTheme = sharedPreferencesManager.sharedPreferences.getString(
+                    Constants.PREF_APP_THEME,
+                    Constants.DEFAULT_APP_THEME
+                );
+                if ("Faded Night".equals(tileTheme)) {
+                    applyFadedNightThemeToTiles();
+                } else if ("Midnight Dusk".equals(tileTheme)) {
+                    applyMidnightDuskThemeToTiles();
+                }
+            } catch (RuntimeException e) {
+                Log.e(TAG, "Error initializing camera tiles", e);
+            }
+
+            // Attempt to find camera with flash
+            try {
+                cameraId = getCameraWithFlash();
+                if (cameraId == null) {
+                    Log.d(TAG, "No camera with flash found");
+                    if (buttonTorchSwitch != null) {
+                        buttonTorchSwitch.setEnabled(false);
+                        buttonTorchSwitch.setVisibility(View.GONE);
+                    }
+                } else {
+                    Log.d(TAG, "Flash available on camera: " + cameraId);
+                    if (buttonTorchSwitch != null) {
+                        buttonTorchSwitch.setEnabled(true);
+                        buttonTorchSwitch.setVisibility(View.VISIBLE);
+                    }
+                }
+            } catch (CameraAccessException e) {
+                Log.e(TAG, "Camera access error: " + e.getMessage(), e);
+                if (buttonTorchSwitch != null) {
+                    buttonTorchSwitch.setEnabled(false);
+                    buttonTorchSwitch.setVisibility(View.GONE);
+                }
+            } catch (SecurityException e) {
+                Log.e(TAG, "Camera permission missing while probing flash", e);
+                if (buttonTorchSwitch != null) {
+                    buttonTorchSwitch.setEnabled(false);
+                    buttonTorchSwitch.setVisibility(View.GONE);
+                }
+            }
+        } else {
+            // Not in camera mode (FadRec) or missing permission: hide camera-only UI.
+            if (buttonTorchSwitch != null) {
+                buttonTorchSwitch.setVisibility(View.GONE);
+            }
+            View tileAfToggleView = view.findViewById(R.id.tile_af_toggle);
+            if (tileAfToggleView != null) {
+                tileAfToggleView.setVisibility(View.GONE);
+            }
+            View tileExpView = view.findViewById(R.id.tile_exp);
+            if (tileExpView != null) {
+                tileExpView.setVisibility(View.GONE);
+            }
+            View tileZoomView = view.findViewById(R.id.tile_zoom);
+            if (tileZoomView != null) {
+                tileZoomView.setVisibility(View.GONE);
+            }
         }
+        // -------------- Fix Ended (onViewCreated_cameraInit)-----------
 
         View btnGetPro = view.findViewById(R.id.btnGetPro);
         View proBadgeDot = view.findViewById(R.id.proBadgeDot);
@@ -6771,6 +6825,21 @@ public class HomeFragment extends BaseFragment {
 
     public boolean isPaused() {
         return recordingState.equals(RecordingState.PAUSED);
+    }
+
+    /**
+     * Indicates whether this fragment should initialize camera-specific UI/hardware.
+     * <p>
+     * Subclasses (e.g. screen-recording home) can override this to disable camera
+     * initialization and avoid CAMERA permission requirements.
+     * </p>
+     *
+     * @return true to initialize camera features, false to skip
+     */
+    protected boolean shouldInitializeCameraFeatures() {
+        // -------------- Fix Start (shouldInitializeCameraFeatures)-----------
+        return true;
+        // -------------- Fix Ended (shouldInitializeCameraFeatures)-----------
     }
 
     private void initializeTorch() {
