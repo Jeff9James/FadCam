@@ -45,18 +45,18 @@ jobs:
       - name: Verify APKs were built
         run: |
           echo "✓ Checking built APKs..."
-          ls -lh app/build/outputs/apk/notesPro/debug/app-notesPro-debug.apk
-          ls -lh app/build/outputs/apk/calcPro/debug/app-calcPro-debug.apk
-          ls -lh app/build/outputs/apk/weatherPro/debug/app-weatherPro-debug.apk
-          
+          ls -lh app/build/outputs/apk/notesPro/debug/app-notesPro-arm64-v8a-debug.apk
+          ls -lh app/build/outputs/apk/calcPro/debug/app-calcPro-arm64-v8a-debug.apk
+          ls -lh app/build/outputs/apk/weatherPro/debug/app-weatherPro-arm64-v8a-debug.apk
+
       - name: Upload Pro variant artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fadcam-pro-variants-debug
           path: |
-            app/build/outputs/apk/notesPro/debug/app-notesPro-debug.apk
-            app/build/outputs/apk/calcPro/debug/app-calcPro-debug.apk
-            app/build/outputs/apk/weatherPro/debug/app-weatherPro-debug.apk
+            app/build/outputs/apk/notesPro/debug/app-notesPro-arm64-v8a-debug.apk
+            app/build/outputs/apk/calcPro/debug/app-calcPro-arm64-v8a-debug.apk
+            app/build/outputs/apk/weatherPro/debug/app-weatherPro-arm64-v8a-debug.apk
           retention-days: 1
           
       - name: Build summary
@@ -68,21 +68,22 @@ jobs:
           echo "### 1. Notes Pro" >> $GITHUB_STEP_SUMMARY
           echo "- Package ID: com.fadcam.beta.notes" >> $GITHUB_STEP_SUMMARY
           echo "- App Name: Notes" >> $GITHUB_STEP_SUMMARY
-          echo "- File: app-notesPro-debug.apk" >> $GITHUB_STEP_SUMMARY
+          echo "- File: app-notesPro-arm64-v8a-debug.apk" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 2. Calculator Pro" >> $GITHUB_STEP_SUMMARY
           echo "- Package ID: com.fadcam.beta.calc" >> $GITHUB_STEP_SUMMARY
           echo "- App Name: Calculator" >> $GITHUB_STEP_SUMMARY
-          echo "- File: app-calcPro-debug.apk" >> $GITHUB_STEP_SUMMARY
+          echo "- File: app-calcPro-arm64-v8a-debug.apk" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 3. Weather Pro" >> $GITHUB_STEP_SUMMARY
           echo "- Package ID: com.fadcam.beta.weather" >> $GITHUB_STEP_SUMMARY
           echo "- App Name: Weather" >> $GITHUB_STEP_SUMMARY
-          echo "- File: app-weatherPro-debug.apk" >> $GITHUB_STEP_SUMMARY
+          echo "- File: app-weatherPro-arm64-v8a-debug.apk" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Build Details:**" >> $GITHUB_STEP_SUMMARY
           echo "- Build Type: Debug" >> $GITHUB_STEP_SUMMARY
           echo "- Version Suffix: -beta" >> $GITHUB_STEP_SUMMARY
+          echo "- Architecture: arm64-v8a" >> $GITHUB_STEP_SUMMARY
           echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
