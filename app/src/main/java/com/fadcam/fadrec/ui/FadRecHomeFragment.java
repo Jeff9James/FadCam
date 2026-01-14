@@ -162,29 +162,91 @@ public class FadRecHomeFragment extends HomeFragment {
             overlayPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
-                    Context ctx = getContext();
-                    if (ctx != null && android.provider.Settings.canDrawOverlays(ctx)) {
-                        if (sharedPreferencesManager != null) {
-                            sharedPreferencesManager.setFloatingControlsEnabled(true);
+                    // -------------- Fix Start (overlayPermissionLauncher)-----------
+                    try {
+                        // Check fragment lifecycle before proceeding
+                        if (!isAdded()) {
+                            Log.w(TAG, "overlayPermissionLauncher: Fragment not attached, skipping");
+                            return;
                         }
-                        
-                        if (getView() != null) {
-                            View cardFloatingControls = getView().findViewById(com.fadcam.R.id.cardFloatingControls);
-                            if (cardFloatingControls != null) {
-                                androidx.appcompat.widget.SwitchCompat switchFloatingControls = 
-                                    cardFloatingControls.findViewById(com.fadcam.R.id.switchFloatingControls);
-                                if (switchFloatingControls != null) {
-                                    switchFloatingControls.setChecked(true);
+
+                        Context ctx = getContext();
+                        if (ctx == null) {
+                            Log.w(TAG, "overlayPermissionLauncher: Context is null, skipping");
+                            return;
+                        }
+
+                        // Verify overlay permission was granted
+                        if (android.provider.Settings.canDrawOverlays(ctx)) {
+                            Log.d(TAG, "overlayPermissionLauncher: Permission granted, enabling floating controls");
+
+                            // Update SharedPreferences
+                            if (sharedPreferencesManager != null) {
+                                sharedPreferencesManager.setFloatingControlsEnabled(true);
+                                Log.d(TAG, "overlayPermissionLauncher: SharedPreferences updated");
+                            } else {
+                                Log.e(TAG, "overlayPermissionLauncher: sharedPreferencesManager is null");
+                            }
+
+                            // Update UI switch state
+                            if (getView() != null) {
+                                try {
+                                    View cardFloatingControls = getView().findViewById(com.fadcam.R.id.cardFloatingControls);
+                                    if (cardFloatingControls != null) {
+                                        androidx.appcompat.widget.SwitchCompat switchFloatingControls =
+                                            cardFloatingControls.findViewById(com.fadcam.R.id.switchFloatingControls);
+                                        if (switchFloatingControls != null) {
+                                            switchFloatingControls.setChecked(true);
+                                            Log.d(TAG, "overlayPermissionLauncher: Switch updated to true");
+                                        }
+                                    }
+                                } catch (Exception e) {
+                                    Log.e(TAG, "overlayPermissionLauncher: Error updating UI switch", e);
+                                }
+                            } else {
+                                Log.w(TAG, "overlayPermissionLauncher: getView() returned null, skipping UI update");
+                            }
+
+                            // Start annotation service
+                            try {
+                                Log.d(TAG, "overlayPermissionLauncher: Starting annotation service");
+                                startAnnotationService();
+                            } catch (Exception e) {
+                                Log.e(TAG, "overlayPermissionLauncher: Error starting annotation service", e);
+                                // Show error to user
+                                Toast.makeText(ctx, "Failed to start annotation service", Toast.LENGTH_SHORT).show();
+                                // Reset switch on error
+                                if (getView() != null) {
+                                    View cardFloatingControls = getView().findViewById(com.fadcam.R.id.cardFloatingControls);
+                                    if (cardFloatingControls != null) {
+                                        androidx.appcompat.widget.SwitchCompat switchFloatingControls =
+                                            cardFloatingControls.findViewById(com.fadcam.R.id.switchFloatingControls);
+                                        if (switchFloatingControls != null) {
+                                            switchFloatingControls.setChecked(false);
+                                        }
+                                    }
                                 }
                             }
+                        } else {
+                            Log.w(TAG, "overlayPermissionLauncher: Overlay permission still not granted");
+                            com.fadcam.Utils.showQuickToast(
+                                ctx,
+                                com.fadcam.R.string.floating_controls_permission_needed
+                            );
                         }
-                        startAnnotationService();
-                    } else if (ctx != null) {
-                        com.fadcam.Utils.showQuickToast(
-                            ctx,
-                            com.fadcam.R.string.floating_controls_permission_needed
-                        );
+                    } catch (Exception e) {
+                        Log.e(TAG, "overlayPermissionLauncher: Unexpected error in callback", e);
+                        // Show generic error to user
+                        try {
+                            Context ctx = getContext();
+                            if (ctx != null && isAdded()) {
+                                Toast.makeText(ctx, "Error enabling floating controls", Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (Exception toastEx) {
+                            Log.e(TAG, "overlayPermissionLauncher: Failed to show error toast", toastEx);
+                        }
                     }
+                    // -------------- Fix Ended (overlayPermissionLauncher)-----------
                 }
             );
         } catch (Exception e) {
@@ -604,33 +666,85 @@ public class FadRecHomeFragment extends HomeFragment {
                 // Set initial state from SharedPreferences
                 boolean isEnabled = sharedPreferencesManager.isFloatingControlsEnabled();
                 switchFloatingControls.setChecked(isEnabled);
-                
+
                 // Handle switch toggle
                 switchFloatingControls.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                    Context context = getContext();
-                    if (context == null) return;
-                    
-                    if (isChecked) {
-                        // Request overlay permission if not granted
-                        if (!android.provider.Settings.canDrawOverlays(context)) {
-                            // Show permission dialog
-                            requestOverlayPermission();
-                            // Uncheck the switch until permission is granted
-                            buttonView.setChecked(false);
-                        } else {
-                            // Enable unified annotation overlay
-                            if (sharedPreferencesManager != null) {
-                                sharedPreferencesManager.setFloatingControlsEnabled(true);
+                    // -------------- Fix Start (switchFloatingControls toggle)-----------
+                    try {
+                        Log.d(TAG, "Floating controls switch toggled: " + isChecked);
+
+                        Context context = getContext();
+                        if (context == null) {
+                            Log.w(TAG, "Switch toggle: Context is null, ignoring");
+                            return;
+                        }
+
+                        // Check fragment lifecycle
+                        if (!isAdded()) {
+                            Log.w(TAG, "Switch toggle: Fragment not attached, ignoring");
+                            return;
+                        }
+
+                        if (isChecked) {
+                            Log.d(TAG, "Switch toggle: Enabling floating controls");
+                            // Request overlay permission if not granted
+                            if (!android.provider.Settings.canDrawOverlays(context)) {
+                                Log.d(TAG, "Switch toggle: Overlay permission not granted, requesting");
+                                try {
+                                    // Show permission dialog
+                                    requestOverlayPermission();
+                                    // Uncheck the switch until permission is granted
+                                    buttonView.setChecked(false);
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Switch toggle: Error requesting overlay permission", e);
+                                    buttonView.setChecked(false);
+                                    Toast.makeText(context, "Error requesting permission", Toast.LENGTH_SHORT).show();
+                                }
+                            } else {
+                                Log.d(TAG, "Switch toggle: Permission granted, starting service");
+                                try {
+                                    // Enable unified annotation overlay
+                                    if (sharedPreferencesManager != null) {
+                                        sharedPreferencesManager.setFloatingControlsEnabled(true);
+                                        Log.d(TAG, "Switch toggle: SharedPreferences updated");
+                                    } else {
+                                        Log.e(TAG, "Switch toggle: sharedPreferencesManager is null");
+                                    }
+                                    startAnnotationService();
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Switch toggle: Error enabling floating controls", e);
+                                    buttonView.setChecked(false);
+                                    Toast.makeText(context, "Failed to enable floating controls", Toast.LENGTH_SHORT).show();
+                                }
                             }
-                            startAnnotationService();
+                        } else {
+                            Log.d(TAG, "Switch toggle: Disabling floating controls");
+                            try {
+                                // Disable annotation overlay
+                                if (sharedPreferencesManager != null) {
+                                    sharedPreferencesManager.setFloatingControlsEnabled(false);
+                                    Log.d(TAG, "Switch toggle: SharedPreferences updated to false");
+                                }
+                                stopAnnotationService();
+                            } catch (Exception e) {
+                                Log.e(TAG, "Switch toggle: Error disabling floating controls", e);
+                                Toast.makeText(context, "Error disabling floating controls", Toast.LENGTH_SHORT).show();
+                            }
                         }
-                    } else {
-                        // Disable annotation overlay
-                        if (sharedPreferencesManager != null) {
-                            sharedPreferencesManager.setFloatingControlsEnabled(false);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Switch toggle: Unexpected error in toggle handler", e);
+                        try {
+                            Context context = getContext();
+                            if (context != null) {
+                                Toast.makeText(context, "Error changing floating controls", Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (Exception toastEx) {
+                            Log.e(TAG, "Switch toggle: Failed to show error toast", toastEx);
                         }
-                        stopAnnotationService();
+                        // Reset switch to safe state
+                        buttonView.setChecked(false);
                     }
+                    // -------------- Fix Ended (switchFloatingControls toggle)-----------
                 });
                 
                 // If already enabled and permission granted, start unified annotation service
@@ -860,38 +974,88 @@ public class FadRecHomeFragment extends HomeFragment {
      * Start the unified annotation overlay service.
      */
     private void startAnnotationService() {
+        // -------------- Fix Start (startAnnotationService)-----------
         Context context = getContext();
-        if (context == null) return;
-        
+        if (context == null) {
+            Log.e(TAG, "startAnnotationService: Context is null, cannot start service");
+            return;
+        }
+
+        // Check fragment lifecycle
+        if (!isAdded()) {
+            Log.e(TAG, "startAnnotationService: Fragment not attached, cannot start service");
+            return;
+        }
+
+        // Double-check overlay permission before starting service
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            if (!android.provider.Settings.canDrawOverlays(context)) {
+                Log.w(TAG, "startAnnotationService: Overlay permission not granted, aborting");
+                Toast.makeText(context, "Overlay permission required", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
         try {
+            Log.d(TAG, "startAnnotationService: Starting annotation service");
+
             // Show Material Design loading dialog while service initializes
             if (loadingDialog == null || !loadingDialog.isShowing()) {
-                // Create Material Design dialog with custom layout
-                android.view.LayoutInflater inflater = android.view.LayoutInflater.from(context);
-                android.view.View dialogView = inflater.inflate(com.fadcam.R.layout.dialog_loading, null);
-                
-                loadingDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-                    .setView(dialogView)
-                    .setCancelable(false)
-                    .create();
-                loadingDialog.show();
+                try {
+                    android.view.LayoutInflater inflater = android.view.LayoutInflater.from(context);
+                    android.view.View dialogView = inflater.inflate(com.fadcam.R.layout.dialog_loading, null);
+
+                    loadingDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+                        .setView(dialogView)
+                        .setCancelable(false)
+                        .create();
+                    loadingDialog.show();
+                    Log.d(TAG, "startAnnotationService: Loading dialog shown");
+                } catch (Exception e) {
+                    Log.e(TAG, "startAnnotationService: Error showing loading dialog", e);
+                    // Continue anyway - dialog is not critical
+                }
             }
-            
+
             android.content.Intent intent = new android.content.Intent(
                 context,
                 AnnotationService.class
             );
+
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 context.startForegroundService(intent);
+                Log.d(TAG, "startAnnotationService: Started foreground service");
             } else {
                 context.startService(intent);
+                Log.d(TAG, "startAnnotationService: Started service");
             }
-            Log.d(TAG, "Annotation service started");
+        } catch (SecurityException e) {
+            Log.e(TAG, "startAnnotationService: Security exception - permission denied", e);
+            Toast.makeText(context, "Permission denied: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            dismissLoadingDialog();
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "startAnnotationService: Illegal state - app in background", e);
+            Toast.makeText(context, "Cannot start service while app is in background", Toast.LENGTH_SHORT).show();
+            dismissLoadingDialog();
         } catch (Exception e) {
-            Log.e(TAG, "Error starting annotation service", e);
+            Log.e(TAG, "startAnnotationService: Unexpected error starting service", e);
+            Toast.makeText(context, "Failed to start annotation service", Toast.LENGTH_SHORT).show();
+            dismissLoadingDialog();
+        }
+        // -------------- Fix Ended (startAnnotationService)-----------
+    }
+
+    /**
+     * Helper method to dismiss loading dialog safely
+     */
+    private void dismissLoadingDialog() {
+        try {
             if (loadingDialog != null && loadingDialog.isShowing()) {
                 loadingDialog.dismiss();
+                Log.d(TAG, "Loading dialog dismissed");
             }
+        } catch (Exception e) {
+            Log.e(TAG, "Error dismissing loading dialog", e);
         }
     }
     
@@ -899,19 +1063,36 @@ public class FadRecHomeFragment extends HomeFragment {
      * Stop the unified annotation overlay service.
      */
     private void stopAnnotationService() {
+        // -------------- Fix Start (stopAnnotationService)-----------
         Context context = getContext();
-        if (context == null) return;
-        
+        if (context == null) {
+            Log.w(TAG, "stopAnnotationService: Context is null, cannot stop service");
+            return;
+        }
+
+        // Check fragment lifecycle
+        if (!isAdded()) {
+            Log.w(TAG, "stopAnnotationService: Fragment not attached, cannot stop service");
+            return;
+        }
+
         try {
+            Log.d(TAG, "stopAnnotationService: Stopping annotation service");
+
             android.content.Intent intent = new android.content.Intent(
                 context,
                 AnnotationService.class
             );
             context.stopService(intent);
-            Log.d(TAG, "Annotation service stopped");
+            Log.d(TAG, "stopAnnotationService: Service stop requested");
         } catch (Exception e) {
-            Log.e(TAG, "Error stopping annotation service", e);
+            Log.e(TAG, "stopAnnotationService: Error stopping annotation service", e);
+            Toast.makeText(context, "Error stopping annotation service", Toast.LENGTH_SHORT).show();
+        } finally {
+            // Always dismiss loading dialog if showing
+            dismissLoadingDialog();
         }
+        // -------------- Fix Ended (stopAnnotationService)-----------
     }
     
     /**
