@@ -778,31 +778,31 @@ public class FadRecHomeFragment extends HomeFragment {
             // Add after floating controls card (which was added at index 0)
             tilesParent.addView(cardGestureTrails, 1);
             
-            androidx.appcompat.widget.SwitchCompat switchGestureTrails = 
+            androidx.appcompat.widget.SwitchCompat switchGestureTrails =
                 cardGestureTrails.findViewById(com.fadcam.R.id.switchGestureTrails);
-            View layoutGestureColors = cardGestureTrails.findViewById(com.fadcam.R.id.layoutGestureColors);
-            View btnPickDotColor = cardGestureTrails.findViewById(com.fadcam.R.id.btnPickDotColor);
-            View btnPickTrailColor = cardGestureTrails.findViewById(com.fadcam.R.id.btnPickTrailColor);
-            View viewDotColorPreview = cardGestureTrails.findViewById(com.fadcam.R.id.viewDotColorPreview);
+            View layoutGestureTrailColors = cardGestureTrails.findViewById(com.fadcam.R.id.layoutGestureTrailColors);
+            View btnTapDotColor = cardGestureTrails.findViewById(com.fadcam.R.id.btnTapDotColor);
+            View btnTrailColor = cardGestureTrails.findViewById(com.fadcam.R.id.btnTrailColor);
+            View viewTapDotColorPreview = cardGestureTrails.findViewById(com.fadcam.R.id.viewTapDotColorPreview);
             View viewTrailColorPreview = cardGestureTrails.findViewById(com.fadcam.R.id.viewTrailColorPreview);
-            
+
             // Set initial state
             boolean isEnabled = sharedPreferencesManager.isGestureTrailsEnabled();
             switchGestureTrails.setChecked(isEnabled);
-            layoutGestureColors.setVisibility(isEnabled ? View.VISIBLE : View.GONE);
-            
+            layoutGestureTrailColors.setVisibility(isEnabled ? View.VISIBLE : View.GONE);
+
             // Update previews
-            updateGestureColorPreviews(viewDotColorPreview, viewTrailColorPreview);
-            
+            updateGestureColorPreviews(viewTapDotColorPreview, viewTrailColorPreview);
+
             // Handle switch toggle
             switchGestureTrails.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 sharedPreferencesManager.setGestureTrailsEnabled(isChecked);
-                layoutGestureColors.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+                layoutGestureTrailColors.setVisibility(isChecked ? View.VISIBLE : View.GONE);
                 notifyGestureSettingsChanged();
             });
-            
+
             // Handle color picking
-            btnPickDotColor.setOnClickListener(v -> {
+            btnTapDotColor.setOnClickListener(v -> {
                 Context context = getContext();
                 if (context != null) {
                     Intent intent = new Intent(context, ColorPickerDialogActivity.class);
@@ -810,8 +810,8 @@ public class FadRecHomeFragment extends HomeFragment {
                     startActivity(intent);
                 }
             });
-            
-            btnPickTrailColor.setOnClickListener(v -> {
+
+            btnTrailColor.setOnClickListener(v -> {
                 Context context = getContext();
                 if (context != null) {
                     Intent intent = new Intent(context, ColorPickerDialogActivity.class);
@@ -866,7 +866,7 @@ public class FadRecHomeFragment extends HomeFragment {
                     
                     // Refresh previews
                     if (getView() != null) {
-                        View dotPreview = getView().findViewById(com.fadcam.R.id.viewDotColorPreview);
+                        View dotPreview = getView().findViewById(com.fadcam.R.id.viewTapDotColorPreview);
                         View trailPreview = getView().findViewById(com.fadcam.R.id.viewTrailColorPreview);
                         updateGestureColorPreviews(dotPreview, trailPreview);
                     }

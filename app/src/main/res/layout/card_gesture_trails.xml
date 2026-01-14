@@ -4,115 +4,135 @@
     android:id="@+id/cardGestureTrails"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="8dp"
+    android:layout_marginTop="4dp"
     app:cardBackgroundColor="?attr/colorSurface"
     app:cardCornerRadius="8dp"
-    app:cardElevation="4dp">
+    app:cardElevation="4dp"
+    app:strokeColor="#4CAF50"
+    app:strokeWidth="2dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="4dp">
 
+        <!-- Header row with icon, title, and switch -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:padding="4dp">
 
             <!-- Icon -->
             <TextView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:id="@+id/ivGestureTrailsIcon"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:text="gesture"
                 android:textSize="20sp"
                 android:gravity="center"
                 android:fontFamily="@font/materialicons"
                 android:textColor="?attr/colorOnSurface"
-                android:layout_marginEnd="12dp" />
+                android:layout_marginEnd="4dp"
+                android:layout_gravity="center" />
 
             <!-- Title -->
             <TextView
+                android:id="@+id/tvGestureTrailsTitle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/gesture_trails_title"
-                android:textSize="15sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
-                android:textColor="?attr/colorHeading" />
+                android:textColor="?attr/colorHeading"
+                android:layout_marginStart="4dp"
+                android:layout_gravity="center" />
 
             <!-- Switch -->
             <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/switchGestureTrails"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:layout_gravity="center" />
+
         </LinearLayout>
 
-        <!-- Color customization (visible when enabled) -->
+        <!-- Color picker buttons (visible when switch is ON) -->
         <LinearLayout
-            android:id="@+id/layoutGestureColors"
+            android:id="@+id/layoutGestureTrailColors"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="8dp"
-            android:visibility="gone">
+            android:orientation="horizontal"
+            android:visibility="gone"
+            android:layout_marginTop="4dp">
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="?attr/dividerHorizontal"
-                android:layout_marginBottom="8dp" />
-
-            <!-- Tap Dot Color -->
+            <!-- Tap Dot Color Button -->
             <LinearLayout
-                android:id="@+id/btnPickDotColor"
-                android:layout_width="match_parent"
+                android:id="@+id/btnTapDotColor"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
                 android:padding="8dp"
-                android:background="?attr/selectableItemBackground">
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
 
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/gesture_dot_color"
-                    android:textSize="13sp"
-                    android:textColor="?attr/colorOnSurface" />
-
+                <!-- Color Preview Circle -->
                 <View
-                    android:id="@+id/viewDotColorPreview"
+                    android:id="@+id/viewTapDotColorPreview"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:background="@drawable/color_preview_circle" />
+
+                <!-- Label -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gesture_trail_tap_dot_color"
+                    android:textSize="10sp"
+                    android:textColor="?attr/colorOnSurface"
+                    android:layout_marginTop="4dp" />
+
             </LinearLayout>
 
-            <!-- Trail Color -->
+            <!-- Trail Color Button -->
             <LinearLayout
-                android:id="@+id/btnPickTrailColor"
-                android:layout_width="match_parent"
+                android:id="@+id/btnTrailColor"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
                 android:padding="8dp"
-                android:background="?attr/selectableItemBackground">
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
 
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/gesture_trail_color"
-                    android:textSize="13sp"
-                    android:textColor="?attr/colorOnSurface" />
-
+                <!-- Color Preview Circle -->
                 <View
                     android:id="@+id/viewTrailColorPreview"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:background="@drawable/color_preview_circle" />
+
+                <!-- Label -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gesture_trail_trail_color"
+                    android:textSize="10sp"
+                    android:textColor="?attr/colorOnSurface"
+                    android:layout_marginTop="4dp" />
+
             </LinearLayout>
+
         </LinearLayout>
+
     </LinearLayout>
+
 </androidx.cardview.widget.CardView>
