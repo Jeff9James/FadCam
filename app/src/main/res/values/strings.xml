@@ -125,8 +125,8 @@
     <string name="fadrec_permission_denied">Screen recording permission denied</string>
     <string name="fadrec_mode_title">FadRec • Screen Recording</string>
     <string name="gesture_trails_title">Show Gesture Trails</string>
-    <string name="gesture_dot_color">Tap Dot Color</string>
-    <string name="gesture_trail_color">Trail Color</string>
+    <string name="gesture_trail_tap_dot_color">Tap Dot Color</string>
+    <string name="gesture_trail_trail_color">Trail Color</string>
 
     <string name="video_recording_started">Recording started</string>
     <string name="video_recording_stopped">Recording stopped</string>
@@ -1324,5 +1324,5 @@ For the smoothest playback experience, you can use an external player like VLC. 
     <string name="stream_notes_wifi">• Clients must be on the same WiFi network to access the stream</string>
     <string name="stream_notes_quality">• Stream quality (LOW/MEDIUM/HIGH/ULTRA) controls FPS cap and bitrate to prevent network issues</string>
     <string name="stream_notes_resolution">• Stream orientation and resolution are taken from your normal recording settings (Video Settings → Resolution &amp; Orientation). Adjust those if you want to change stream dimensions</string>
-    
+
 </resources>

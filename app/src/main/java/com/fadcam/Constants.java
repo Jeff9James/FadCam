@@ -191,6 +191,10 @@ public abstract class Constants {
     public static final String PREF_GESTURE_DOT_COLOR = "pref_gesture_dot_color";
     public static final String PREF_GESTURE_TRAIL_COLOR = "pref_gesture_trail_color";
 
+    // Gesture trails broadcast action
+    public static final String ACTION_GESTURE_SETTINGS_CHANGED =
+        "com.fadcam.fadrec.ACTION_GESTURE_SETTINGS_CHANGED";
+
     // Default screen recording quality settings
     public static final int DEFAULT_SCREEN_RECORDING_WIDTH = 1920; // FHD
     public static final int DEFAULT_SCREEN_RECORDING_HEIGHT = 1080; // FHD
