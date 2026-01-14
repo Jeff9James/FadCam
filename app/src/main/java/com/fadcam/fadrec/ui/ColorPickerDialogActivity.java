@@ -10,6 +10,7 @@ import android.widget.GridLayout;
 import androidx.annotation.Nullable;
 
 import com.fadcam.R;
+import com.fadcam.SharedPreferencesManager;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 /**
@@ -20,15 +21,21 @@ public class ColorPickerDialogActivity extends Activity {
     
     public static final String EXTRA_SELECTED_COLOR = "selected_color";
     public static final String EXTRA_TAG = "tag";
+    public static final String EXTRA_COLOR_TYPE = "color_type";
+    public static final String EXTRA_REQUEST_CODE = "request_code";
     public static final String ACTION_COLOR_SELECTED = "com.fadcam.fadrec.COLOR_SELECTED";
     
     private String tag;
+    private String colorType;
+    private int requestCode;
     
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
         tag = getIntent().getStringExtra(EXTRA_TAG);
+        colorType = getIntent().getStringExtra(EXTRA_COLOR_TYPE);
+        requestCode = getIntent().getIntExtra(EXTRA_REQUEST_CODE, 0);
         
         // Show color picker dialog immediately
         showColorPickerDialog();
@@ -48,7 +55,7 @@ public class ColorPickerDialogActivity extends Activity {
             // Row 5
             0xFF616161, 0xFF455A64, 0xFFAD1457, 0xFF6A1B9A,
             // Row 6
-            0xFF4527A0, 0xFF283593, 0xFF1565C0, 0xFF01579B
+            0xFF512DA8, 0xFF303F9F, 0xFF1976D2, 0xFF00ACC1
         };
         
         // Create ScrollView wrapper for scrolling with max height
@@ -89,7 +96,16 @@ public class ColorPickerDialogActivity extends Activity {
         
         // Create Material dialog
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
-        builder.setTitle("Pick a Color");
+        
+        // Set title based on color type
+        String title = "Pick a Color";
+        if ("tap_dot".equals(colorType)) {
+            title = "Tap Dot Color";
+        } else if ("trail".equals(colorType)) {
+            title = "Trail Color";
+        }
+        builder.setTitle(title);
+        
         builder.setView(scrollView);
         builder.setNegativeButton("Cancel", (dialog, which) -> finish());
         builder.setOnCancelListener(dialog -> finish());
@@ -113,13 +129,31 @@ public class ColorPickerDialogActivity extends Activity {
             View colorSwatch = colorGrid.getChildAt(i);
             int finalColor = colors[i];
             colorSwatch.setOnClickListener(v -> {
-                // Send result back to service or fragment
-                Intent resultIntent = new Intent(ACTION_COLOR_SELECTED);
-                resultIntent.putExtra(EXTRA_SELECTED_COLOR, finalColor);
-                if (tag != null) {
-                    resultIntent.putExtra(EXTRA_TAG, tag);
+                // Handle color selection based on color type
+                if ("tap_dot".equals(colorType) || "trail".equals(colorType)) {
+                    // Save to SharedPreferences
+                    SharedPreferencesManager prefsManager = 
+                        SharedPreferencesManager.getInstance(getApplicationContext());
+                    
+                    if ("tap_dot".equals(colorType)) {
+                        prefsManager.setGestureDotColor(finalColor);
+                    } else if ("trail".equals(colorType)) {
+                        prefsManager.setGestureTrailColor(finalColor);
+                    }
+                    
+                    // Send broadcast to update colors
+                    Intent resultIntent = new Intent("com.fadcam.fadrec.ACTION_GESTURE_SETTINGS_CHANGED");
+                    sendBroadcast(resultIntent);
+                    
+                } else {
+                    // Original behavior for other color types
+                    Intent resultIntent = new Intent(ACTION_COLOR_SELECTED);
+                    resultIntent.putExtra(EXTRA_SELECTED_COLOR, finalColor);
+                    if (tag != null) {
+                        resultIntent.putExtra(EXTRA_TAG, tag);
+                    }
+                    sendBroadcast(resultIntent);
                 }
-                sendBroadcast(resultIntent);
                 
                 // Dismiss dialog and close activity
                 dialog.dismiss();

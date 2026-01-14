@@ -23,6 +23,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.fadcam.Constants;
 import com.fadcam.R;
+import com.fadcam.SharedPreferencesManager;
 import com.fadcam.fadrec.ScreenRecordingState;
 
 /**
@@ -47,6 +48,12 @@ public class FloatingControlsService extends Service {
     private View annotationsContent;
     private androidx.appcompat.widget.SwitchCompat annotationSwitch;
     private androidx.appcompat.widget.SwitchCompat snapGuidesSwitch;
+    private androidx.appcompat.widget.SwitchCompat gestureTrailsSwitch;
+    private View gestureTrailsOptions;
+    private View tapDotColorButton;
+    private View trailColorButton;
+    private View tapDotColorPreview;
+    private View trailColorPreview;
     private View btnAddText, btnAddShape;
     
     private boolean isMenuExpanded = false;
@@ -58,6 +65,8 @@ public class FloatingControlsService extends Service {
     private float initialTouchX, initialTouchY;
     
     private BroadcastReceiver stateReceiver;
+    
+    private SharedPreferencesManager sharedPreferencesManager;
 
     @Nullable
     @Override
@@ -71,6 +80,9 @@ public class FloatingControlsService extends Service {
         Log.d(TAG, "FloatingControlsService created");
         
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        
+        // Initialize SharedPreferencesManager
+        sharedPreferencesManager = SharedPreferencesManager.getInstance(getApplicationContext());
         
         // Create floating button
         createFloatingButton();
@@ -174,6 +186,12 @@ public class FloatingControlsService extends Service {
         annotationsContent = unifiedMenuView.findViewById(R.id.annotationsContent);
         annotationSwitch = unifiedMenuView.findViewById(R.id.annotationSwitch);
         snapGuidesSwitch = unifiedMenuView.findViewById(R.id.snapGuidesSwitch);
+        gestureTrailsSwitch = unifiedMenuView.findViewById(R.id.gestureTrailsSwitch);
+        gestureTrailsOptions = unifiedMenuView.findViewById(R.id.gestureTrailsOptions);
+        tapDotColorButton = unifiedMenuView.findViewById(R.id.tapDotColorButton);
+        trailColorButton = unifiedMenuView.findViewById(R.id.trailColorButton);
+        tapDotColorPreview = unifiedMenuView.findViewById(R.id.tapDotColorPreview);
+        trailColorPreview = unifiedMenuView.findViewById(R.id.trailColorPreview);
         btnAddText = unifiedMenuView.findViewById(R.id.btnAddText);
         btnAddShape = unifiedMenuView.findViewById(R.id.btnAddShape);
         
@@ -240,6 +258,41 @@ public class FloatingControlsService extends Service {
             sendBroadcast(intent);
         });
         
+        // Gesture trails switch listener
+        gestureTrailsSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                gestureTrailsOptions.setVisibility(View.VISIBLE);
+                // Save to SharedPreferences
+                sharedPreferencesManager.setGestureTrailsEnabled(true);
+                // Send broadcast to AnnotationView to enable gesture trails
+                Intent intent = new Intent("com.fadcam.fadrec.ACTION_GESTURE_SETTINGS_CHANGED");
+                sendBroadcast(intent);
+            } else {
+                gestureTrailsOptions.setVisibility(View.GONE);
+                // Save to SharedPreferences
+                sharedPreferencesManager.setGestureTrailsEnabled(false);
+                // Send broadcast to AnnotationView to disable gesture trails
+                Intent intent = new Intent("com.fadcam.fadrec.ACTION_GESTURE_SETTINGS_CHANGED");
+                sendBroadcast(intent);
+            }
+        });
+        
+        // Tap dot color button
+        tapDotColorButton.setOnClickListener(v -> {
+            Intent intent = new Intent(this, ColorPickerDialogActivity.class);
+            intent.putExtra("color_type", "tap_dot");
+            intent.putExtra("request_code", 1001);
+            startActivity(intent);
+        });
+        
+        // Trail color button
+        trailColorButton.setOnClickListener(v -> {
+            Intent intent = new Intent(this, ColorPickerDialogActivity.class);
+            intent.putExtra("color_type", "trail");
+            intent.putExtra("request_code", 1002);
+            startActivity(intent);
+        });
+        
         // Set up window parameters for menu
         int layoutType = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -258,7 +311,29 @@ public class FloatingControlsService extends Service {
         windowManager.addView(unifiedMenuView, menuParams);
         isMenuExpanded = true;
         
+        // Initialize gesture trails UI from SharedPreferences
+        initializeGestureTrailsUI();
+        
         updateQuickMenuButtons();
+    }
+    
+    private void initializeGestureTrailsUI() {
+        // Load preferences
+        boolean gestureTrailsEnabled = sharedPreferencesManager.isGestureTrailsEnabled();
+        gestureTrailsSwitch.setChecked(gestureTrailsEnabled);
+        
+        if (gestureTrailsEnabled) {
+            gestureTrailsOptions.setVisibility(View.VISIBLE);
+        } else {
+            gestureTrailsOptions.setVisibility(View.GONE);
+        }
+        
+        // Update color previews
+        int tapDotColor = sharedPreferencesManager.getGestureDotColor();
+        int trailColor = sharedPreferencesManager.getGestureTrailColor();
+        
+        tapDotColorPreview.setBackgroundColor(tapDotColor);
+        trailColorPreview.setBackgroundColor(trailColor);
     }
 
     private void toggleAnnotationsSection() {
