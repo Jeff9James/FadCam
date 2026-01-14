@@ -223,33 +223,68 @@ public class AnnotationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Check SYSTEM_ALERT_WINDOW permission before doing anything
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            if (!android.provider.Settings.canDrawOverlays(this)) {
-                Log.e(TAG, "SYSTEM_ALERT_WINDOW permission not granted, cannot start AnnotationService");
-                // Broadcast permission missing error
-                Intent errorBroadcast = new Intent("com.fadcam.fadrec.ANNOTATION_SERVICE_PERMISSION_ERROR");
+        // -------------- Fix Start (onStartCommand)-----------
+        try {
+            Log.d(TAG, "onStartCommand: Called with intent: " + (intent != null ? intent.getAction() : "null"));
+
+            // Check SYSTEM_ALERT_WINDOW permission before doing anything
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                if (!android.provider.Settings.canDrawOverlays(this)) {
+                    Log.e(TAG, "onStartCommand: SYSTEM_ALERT_WINDOW permission not granted, cannot start AnnotationService");
+
+                    // Broadcast permission missing error to fragment
+                    try {
+                        Intent errorBroadcast = new Intent("com.fadcam.fadrec.ANNOTATION_SERVICE_PERMISSION_ERROR");
+                        sendBroadcast(errorBroadcast);
+                        Log.d(TAG, "onStartCommand: Sent ANNOTATION_SERVICE_PERMISSION_ERROR broadcast");
+                    } catch (Exception broadcastEx) {
+                        Log.e(TAG, "onStartCommand: Failed to send permission error broadcast", broadcastEx);
+                    }
+
+                    stopSelf();
+                    return START_NOT_STICKY;
+                }
+            }
+
+            // Process intent actions
+            if (intent != null && intent.getAction() != null) {
+                String action = intent.getAction();
+                Log.d(TAG, "onStartCommand: Processing action: " + action);
+
+                switch (action) {
+                    case "ACTION_TOGGLE_MENU":
+                        toggleMenu();
+                        break;
+                    case "ACTION_OPEN_PROJECTS":
+                        showProjectManagementDialog();
+                        break;
+                    case "ACTION_TERMINATE_SERVICE":
+                        terminateService();
+                        break;
+                    default:
+                        Log.w(TAG, "onStartCommand: Unknown action: " + action);
+                        break;
+                }
+            } else {
+                Log.d(TAG, "onStartCommand: No action specified, service should already be initialized from onCreate");
+            }
+
+            return START_STICKY;
+        } catch (Exception e) {
+            Log.e(TAG, "onStartCommand: Unexpected error", e);
+
+            // Try to notify fragment of error
+            try {
+                Intent errorBroadcast = new Intent("com.fadcam.fadrec.ANNOTATION_SERVICE_STOPPED");
                 sendBroadcast(errorBroadcast);
-                stopSelf();
-                return START_NOT_STICKY;
+            } catch (Exception broadcastEx) {
+                Log.e(TAG, "onStartCommand: Failed to send error broadcast", broadcastEx);
             }
+
+            // Don't stop service here - let it run to avoid ANR
+            return START_STICKY;
         }
-        
-        if (intent != null && intent.getAction() != null) {
-            String action = intent.getAction();
-            switch (action) {
-                case "ACTION_TOGGLE_MENU":
-                    toggleMenu();
-                    break;
-                case "ACTION_OPEN_PROJECTS":
-                    showProjectManagementDialog();
-                    break;
-                case "ACTION_TERMINATE_SERVICE":
-                    terminateService();
-                    break;
-            }
-        }
-        return START_STICKY;
+        // -------------- Fix Ended (onStartCommand)-----------
     }
 
     private void toggleMenu() {
@@ -702,59 +737,136 @@ public class AnnotationService extends Service {
 
     @Override
     public void onCreate() {
+        // -------------- Fix Start (onCreate)-----------
         super.onCreate();
         Log.d(TAG, "============ AnnotationService onCreate START ============");
 
-        createNotificationChannel();
-        
-        // CRITICAL: Call startForeground() IMMEDIATELY when using startForegroundService()
-        // This must be done before any heavy operations to avoid ForegroundServiceDidNotStartInTimeException
-        // The foregroundServiceType is declared in AndroidManifest.xml as "specialUse"
-        Notification notification = createNotification();
-        startForeground(NOTIFICATION_ID, notification);
-        Log.d(TAG, "Foreground notification started");
+        try {
+            createNotificationChannel();
 
-        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+            // CRITICAL: Call startForeground() IMMEDIATELY when using startForegroundService()
+            // This must be done before any heavy operations to avoid ForegroundServiceDidNotStartInTimeException
+            // The foregroundServiceType is declared in AndroidManifest.xml as "specialUse"
+            Notification notification = createNotification();
+            startForeground(NOTIFICATION_ID, notification);
+            Log.d(TAG, "Foreground notification started");
 
-        // Initialize SharedPreferencesManager for timer
-        sharedPreferencesManager = SharedPreferencesManager.getInstance(this);
+            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+            if (windowManager == null) {
+                throw new RuntimeException("WindowManager is null - system service not available");
+            }
 
-        // Initialize project file manager
-        projectFileManager = new ProjectFileManager(this);
-        Log.d(TAG, "ProjectFileManager initialized");
+            // Initialize SharedPreferencesManager for timer
+            sharedPreferencesManager = SharedPreferencesManager.getInstance(this);
+            if (sharedPreferencesManager == null) {
+                throw new RuntimeException("Failed to initialize SharedPreferencesManager");
+            }
 
-        // Move project scanning to background thread to avoid UI lag
-        new Thread(() -> {
-            // Get or create current project name (file scanning happens here)
-            currentProjectName = projectFileManager.getOrCreateCurrentProject();
-            Log.i(TAG, "Current project name: " + currentProjectName);
+            // Initialize project file manager
+            projectFileManager = new ProjectFileManager(this);
+            Log.d(TAG, "ProjectFileManager initialized");
 
-            // Switch back to main thread for UI operations
-            new Handler(Looper.getMainLooper()).post(() -> {
-                setupAnnotationCanvas();
-                setupToolbar();
-                // Removed: setupInlineTextEditor(); - Now using TextEditorActivity
+            // Move project scanning to background thread to avoid UI lag
+            new Thread(() -> {
+                try {
+                    // Get or create current project name (file scanning happens here)
+                    currentProjectName = projectFileManager.getOrCreateCurrentProject();
+                    Log.i(TAG, "Current project name: " + currentProjectName);
 
-                // Load last saved project automatically
-                loadLastProject();
+                    // Switch back to main thread for UI operations
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        try {
+                            startAnnotationOverlay();
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error in annotation overlay setup", e);
+                            // Notify fragment that service failed to initialize
+                            try {
+                                Intent errorIntent = new Intent("com.fadcam.fadrec.ANNOTATION_SERVICE_STOPPED");
+                                sendBroadcast(errorIntent);
+                            } catch (Exception broadcastEx) {
+                                Log.e(TAG, "Failed to send error broadcast", broadcastEx);
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Error in background initialization", e);
+                    // Notify fragment of initialization failure
+                    try {
+                        new Handler(Looper.getMainLooper()).post(() -> {
+                            Intent errorIntent = new Intent("com.fadcam.fadrec.ANNOTATION_SERVICE_STOPPED");
+                            sendBroadcast(errorIntent);
+                        });
+                    } catch (Exception handlerEx) {
+                        Log.e(TAG, "Failed to post error broadcast", handlerEx);
+                    }
+                }
+            }).start();
+        } catch (Exception e) {
+            Log.e(TAG, "CRITICAL ERROR in onCreate", e);
+            // Try to notify fragment of critical failure
+            try {
+                Intent errorIntent = new Intent("com.fadcam.fadrec.ANNOTATION_SERVICE_STOPPED");
+                sendBroadcast(errorIntent);
+            } catch (Exception broadcastEx) {
+                Log.e(TAG, "Failed to send critical error broadcast", broadcastEx);
+            }
+            // Stop service on critical initialization error
+            stopSelf();
+        }
+        // -------------- Fix Ended (onCreate)-----------
+    }
 
-                startAutoSave();
-                registerMenuActionReceiver();
-                registerRecordingStateReceiver();
-                registerPermissionResultReceiver();
-                registerColorPickerReceiver();
-                registerProjectNamingReceiver();
-                registerProjectSelectionReceiver();
-                registerTextEditorResultReceiver(); // Handle results from TextEditorActivity
-                registerGestureSettingsReceiver(); // Handle gesture settings changes
+    /**
+     * Initialize annotation overlay components safely
+     */
+    private void startAnnotationOverlay() {
+        Log.d(TAG, "startAnnotationOverlay: Starting overlay initialization");
 
-                // Broadcast that service is ready (dismiss loading dialog)
-                Intent readyIntent = new Intent("com.fadcam.fadrec.ANNOTATION_SERVICE_READY");
-                sendBroadcast(readyIntent);
+        try {
+            // Setup core components
+            setupAnnotationCanvas();
+            Log.d(TAG, "startAnnotationOverlay: Annotation canvas setup complete");
 
-                Log.d(TAG, "============ AnnotationService onCreate COMPLETE ============");
-            });
-        }).start();
+            setupToolbar();
+            Log.d(TAG, "startAnnotationOverlay: Toolbar setup complete");
+
+            // Removed: setupInlineTextEditor(); - Now using TextEditorActivity
+
+            // Load last saved project automatically
+            loadLastProject();
+            Log.d(TAG, "startAnnotationOverlay: Last project loaded");
+
+            startAutoSave();
+            registerMenuActionReceiver();
+            registerRecordingStateReceiver();
+            registerPermissionResultReceiver();
+            registerColorPickerReceiver();
+            registerProjectNamingReceiver();
+            registerProjectSelectionReceiver();
+            registerTextEditorResultReceiver(); // Handle results from TextEditorActivity
+            registerGestureSettingsReceiver(); // Handle gesture settings changes
+
+            Log.d(TAG, "startAnnotationOverlay: All receivers registered");
+
+            // Broadcast that service is ready (dismiss loading dialog)
+            Intent readyIntent = new Intent("com.fadcam.fadrec.ANNOTATION_SERVICE_READY");
+            sendBroadcast(readyIntent);
+            Log.d(TAG, "startAnnotationOverlay: Sent ANNOTATION_SERVICE_READY broadcast");
+
+            Log.d(TAG, "============ AnnotationService onCreate COMPLETE ============");
+        } catch (Exception e) {
+            Log.e(TAG, "startAnnotationOverlay: Error initializing overlay", e);
+
+            // Notify fragment that service failed to initialize
+            try {
+                Intent errorIntent = new Intent("com.fadcam.fadrec.ANNOTATION_SERVICE_STOPPED");
+                sendBroadcast(errorIntent);
+            } catch (Exception broadcastEx) {
+                Log.e(TAG, "Failed to send error broadcast", broadcastEx);
+            }
+
+            throw e; // Re-throw to be caught by outer try-catch
+        }
     }
 
     /**
